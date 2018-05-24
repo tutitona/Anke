@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>faselkmclanse</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script>
+    window.onload = function() {
+      /** 質問投稿 **/
+      const inputBox = document.getElementById("inputBox");
+      const inputQuery = document.getElementById("inputQuery");
+      const inputAnsers = document.getElementsByName("inputAnser");
+      const inputBtn = document.getElementById("inputBtn");
+      const inputSub = document.getElementById("inputSub");
+      inputBtn.onclick = createAnserAddTextHTML;
+      inputSub.onclick = postConnect;
+
+      const searchSub = document.getElementById("searchSub");
+      searchSub.onclick = searchConnect;
+
+      /** 質問投稿処理 **/
+      function postConnect(){
+        $.ajax({
+          type: "POST",
+          url: "/post/",
+          dataType: 'json',
+          data:function(query,ansers){
+            const obj = {query:query.value};
+            const anser = [];
+            for(let i = 0;i<ansers.length;i++){
+              anser[i] = ansers[i].value;
+            }
+            obj.ansers = anser;
+            return obj;
+          }(inputQuery,inputAnsers)
+        })
+        .done(function(res){
+          inputQuery.value = "";
+          for(let i of inputAnsers){
+            i.value = "";
+          }
+        })
+        .fail(function(res){
+          console.error(res);
+        });
+      }
+
+      /** 検索処理 **/
+      function searchConnect(){
+        $.ajax({
+          type: "POST",
+          url: "/search/",
+          dataType: 'json',
+        })
+        .done(function(res){
+          for(let i = 0;i<res.length;i++){
+            const number = res[i]._id;
+            const query = res[i].query;
+            const ansers = res[i].ansers;
+            result.appendChild(resultQuestionAddHTML(number,query,ansers));
+            resultQuestionAddActionHTML(number);
+          }
+        })
+        .fail(function(res){
+          console.error(res);
+        });
+      }
+      /** 投票処理 **/
+      function voteConnect(number,index,callback){
+        $.ajax({
+          type: "POST",
+          url: "/vote/",
+          data:{'number':number,'index':index},
+          dataType: 'json',
+        })
+        .done(function(res){
+          callback(res);
+        })
+        .fail(function(res){
+          console.error(res);
+        });
+      }
+
+      function createAnserAddTextHTML(){
+          const inp = document.createElement("input");
+          const br = document.createElement("br");
+          inp.setAttribute("type","text");
+          inp.setAttribute("name","inputAnser");
+          inputBox.insertBefore(inp,inputBtn);
+          inputBox.insertBefore(br,inputBtn);
+      }
+
+      /** 質問投稿の入力内容をオブジェクトとして取り出す **/
+
+
+      /** 質問表示用のHTML要素を作成 **/
+      function resultQuestionAddHTML(number,query,aryAnser){
+        const que = document.createTextNode(query);
+
+        const article = document.createElement("article");
+        article.setAttribute("class","slide");
+
+        const input1 = document.createElement("input");
+        input1.setAttribute("type","button");
+        input1.setAttribute("id","btn"+number);
+        input1.setAttribute("class","question-action-open");
+
+        const input2 = document.createElement("input");
+        input2.setAttribute("type","submit");
+        input2.setAttribute("id","sub"+number);
+        input2.setAttribute("value","決定");
+
+        const label = document.createElement("label");
+        label.setAttribute("for","btn"+number);
+
+        const div1 = document.createElement("div");
+        div1.setAttribute("class","question");
+
+        const div2 = document.createElement("div");
+        div2.setAttribute("id","hid"+number);
+        div2.setAttribute("class","off");
+
+        //ノードの挿入
+        article.appendChild(input1);
+        article.appendChild(label);
+        label.appendChild(div1);
+        label.appendChild(div2);
+        div1.appendChild(que);
+
+        //回答内容を入れる
+        for(let i =0;i<aryAnser.length;i++){
+          const lav = document.createElement("label");
+          const ary=  document.createTextNode(aryAnser[i].anser);
+          const inp = document.createElement("input");
+          inp.setAttribute("type","radio");
+          inp.setAttribute("name",number);
+          inp.setAttribute("value",aryAnser[i].anser);
+          //ノードの挿入
+          div2.appendChild(lav);
+          lav.appendChild(inp);
+          lav.appendChild(ary);
+        }
+        div2.appendChild(input2);
+        return article;
+      }
+      /** アクションを付加する **/
+      function resultQuestionAddActionHTML(number){
+        const btn = document.getElementById('btn' + number);
+        const hid = document.getElementById('hid'+ number);
+        const sub = document.getElementById('sub'+ number);
+
+        btn.onclick = function(){resultQuestionAddHidActionHTML(hid)}
+        sub.onclick = function(){voteAddActionHTML(number,hid,sub)}
+      }
+      /** 決定ボタンを押した後、表示内容を変更する **/
+      function voteAddActionHTML(num,hid,sub){
+        const btns = document.getElementsByName(num);
+        let check = -1;
+        //１つでもチェックがついているか判断
+        for(let i = 0;i < btns.length;i++){
+          if(btns[i].checked){
+            check = i;
+          }
+        }
+        //選択されていなかったとき
+        if(check == -1) sub.value = "選択してください";
+        //div内の子要素を全て削除
+        while(hid.hasChildNodes()){
+          hid.removeChild(hid.firstChild);
+        }
+        //データベースに反映
+        voteConnect(num,check,function(JSON){
+          //div要素を作成
+          /*
+          [{anser:"~~~~~",total:0},{anser:"~~~~~",total:0}{anser:"~~~~~",total:0}]
+
+          */
+          const myVote = document.createTextNode(JSON[check].anser + "に投票しました");
+          hid.appendChild(myVote);
+          for(let i = 0;i<JSON.length;i++){
+            //div要素を作成
+            const div = document.createElement('div');
+            //テキストを作成
+            const text = document.createTextNode(JSON[i].anser + ":  " +JSON[i].total);
+            //div要素の中にテキストを入れる
+            div.appendChild(text);
+            //hidの中にdiv要素を入れる
+            hid.appendChild(div);
+          }
+        })
+        //閉じてしまったhidを表示
+        resultQuestionAddHidActionHTML(hid);
+      }
+      //表示非表示を切り替える
+      function resultQuestionAddHidActionHTML(hid){
+        if(hid.className == "off"){//offなら表示する
+          hid.style.height = "auto";
+          hid.style.display = "block"
+          hid.className = "on";
+        }else if(hid.className == "on"){//onなら非表示にする
+          hid.style.height = "0";
+          hid.style.display = "none";
+          hid.className = "off";
+        }else{
+          console.log("resultQuestionAddHidActionHTMLで不正なものが入っている")
+        }
+      }
+    }
+  </script>
+</head>
+<body>
+  <style>
+  /***********　初期設定 ***************/
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    color:#333;
+    background-color: rgb(173, 255, 196);
+  }
+  /***********************************************/
+  /**************** 質問投稿のアクション***********/
+  #inputBox{
+    display: block;
+    background-color: red;
+    text-align: center;
+  }
+
+
+  /**************** 投稿内容のアクション***********/
+  #result{
+    display: block;
+    margin: 0 auto;
+    width: 400px;
+    text-align: center;
+    background-color: rgb(134, 126, 222);
+  }
+  .slide label {
+    color: #000;
+    text-align: center;
+    border-radius: 20px;
+    background: lightblue;
+    margin: 10px auto;
+    display: block;
+    cursor: pointer;
+  }
+  .slide .off {
+    margin: 0 auto;
+    height: 0;
+    overflow: hidden;
+    display: none;
+  }
+  .slide .question-action-open{
+    display: none;
+  }
+  .question+div label{
+    width: 40%;
+    background-color: rgb(190, 88, 51);
+  }
+  </style>
+    <section id="inputBox">
+      <input type="text" id="inputQuery"/>
+      <br />
+      <input type="text" name="inputAnser" />
+      <br />
+      <input type="button" id="inputBtn" value="追加"/>
+      <input type="submit" id="inputSub" value="送信" />
+    </section>
+    <section id="result">
+      <div id="searchBox">
+        <input type="submit" id="searchSub" value="取得" />
+      </div>
+    </section>
+  </main>
+</body>
+</html>

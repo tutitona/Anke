@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <titile>Ajax</titile>
+  <script>
+    window.onload = function(){
+      let btn = document.getElementById("btn");
+      let text = document.getElementById("text");
+      let view = document.getElementById("view");
+      let req = new XMLHttpRequest();
+      req.onreadystatechange = function(){
+        if(req.readyState == 4 && req.status == 200){
+          let queryList = JSON.parse(req.responseText);
+          view.appendChild(document.createTextNode(queryList.id));
+          view.appendChild(document.createElement("br"));
+          view.appendChild(document.createTextNode(queryList.query));
+          view.appendChild(document.createElement("br"));
+          for(let i = 0;i < queryList.reply.length;i++){
+            view.appendChild(document.createTextNode(queryList.reply[i]));
+            view.appendChild(document.createElement("br"));
+          }
+        }
+      };
+      btn.onclick = function(){
+        req.open("GET","ajax/" + text.value);
+        req.send(null);
+      }
+    }
+  </script>
+</head>
+<body>
+  <input type="text" id="text">
+  <input type="button" id=btn value="送信">
+  <p id="view">
+
+  </p>
+</body>
+</html>
