@@ -30,8 +30,8 @@ app.post('/post/',function(req,res){
 });
 /** 投票 **/
 app.post('/vote/',function(req,res){
-  vote(req.body.number,req.body.index);
-  find({_id:mongo.ObjectID(req.body.number)},{},function(JSON){
+  vote(req.body.id,req.body.index);
+  find({_id:mongo.ObjectID(req.body.id)},{},function(JSON){
     res.json(JSON[0].ansers);
   });
 });
@@ -51,11 +51,11 @@ function find(key,filter,callback){
   });
 };
 //投票する
-function vote(number,index){
+function vote(id,index){
   MongoClient.connect(url,{ useNewUrlParser:true },function(error, database) {
     if (error) throw error;
     const dbo = database.db("QuestionData");
-    const objId = mongo.ObjectID(number);
+    const objId = mongo.ObjectID(id);
     dbo.collection("question").updateOne({_id:objId},{$inc:{[`ansers.${index}.total`]: 1}},
     function(err, res) {
       if (err) throw err;

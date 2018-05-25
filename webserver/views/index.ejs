@@ -6,20 +6,32 @@
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
   <script>
     window.onload = function() {
-      /** 質問投稿 **/
       const inputBox = document.getElementById("inputBox");
       const inputQuery = document.getElementById("inputQuery");
       const inputAnsers = document.getElementsByName("inputAnser");
       const inputBtn = document.getElementById("inputBtn");
       const inputSub = document.getElementById("inputSub");
-      inputBtn.onclick = createAnserAddTextHTML;
-      inputSub.onclick = postConnect;
-
       const searchSub = document.getElementById("searchSub");
-      searchSub.onclick = searchConnect;
-
-      /** 質問投稿処理 **/
-      function postConnect(){
+      /**
+       * inputBtnが押されたときに選択肢を入力するテキストボックスを追加する
+       * @method
+       * @return {undefind} [description]
+       */
+      inputBtn.onclick = function (){
+          const inp = document.createElement("input");
+          const br = document.createElement("br");
+          inp.setAttribute("type","text");
+          inp.setAttribute("name","inputAnser");
+          inputBox.insertBefore(inp,inputBtn);
+          inputBox.insertBefore(br,inputBtn);
+      };
+      /**
+       * inputSubが押されたときにinputBox内の入力内容を
+       * オブジェクトにしてサーバーに送信する。
+       * @method
+       * @return {undefind} [description]
+       */
+      inputSub.onclick = function (){
         $.ajax({
           type: "POST",
           url: "/post/",
@@ -43,10 +55,14 @@
         .fail(function(res){
           console.error(res);
         });
-      }
-
-      /** 検索処理 **/
-      function searchConnect(){
+      };
+      /**
+       * searchSubが押されるとサーバーにrequestを送信し、
+       * 帰ってきたオブジェクトを質問としてdocumentに適用する
+       * @method
+       * @return {[undefind]} [description]
+       */
+      searchSub.onclick = function (){
         $.ajax({
           type: "POST",
           url: "/search/",
@@ -64,13 +80,21 @@
         .fail(function(res){
           console.error(res);
         });
-      }
-      /** 投票処理 **/
-      function voteConnect(number,index,callback){
+      };
+
+      /**
+       * idでDB内を検索しindex番目の投票数を１増やす
+       * @method voteConnect
+       * @param  {[number]}    id   MongoDBでのObjectID
+       * @param  {[number]}    index    何番目のAnserを選択したか
+       * @param  {Function}  callback レスポンスに適用するコールバック関数
+       * @return {[undefind]}    [description]
+       */
+      function voteConnect(id,index,callback){
         $.ajax({
           type: "POST",
           url: "/vote/",
-          data:{'number':number,'index':index},
+          data:{'id':id,'index':index},
           dataType: 'json',
         })
         .done(function(res){
@@ -81,20 +105,16 @@
         });
       }
 
-      function createAnserAddTextHTML(){
-          const inp = document.createElement("input");
-          const br = document.createElement("br");
-          inp.setAttribute("type","text");
-          inp.setAttribute("name","inputAnser");
-          inputBox.insertBefore(inp,inputBtn);
-          inputBox.insertBefore(br,inputBtn);
-      }
 
-      /** 質問投稿の入力内容をオブジェクトとして取り出す **/
-
-
-      /** 質問表示用のHTML要素を作成 **/
-      function resultQuestionAddHTML(number,query,aryAnser){
+      /**
+       * document表示用のHTMLノードを作成する
+       * @method resultQuestionAddHTML
+       * @param  {[String]}              id   [description]
+       * @param  {[String]}              query    [description]
+       * @param  {[array]}              aryAnser [description]
+       * @return {[node]}              [description]
+       */
+      function resultQuestionAddHTML(id,query,aryAnser){
         const que = document.createTextNode(query);
 
         const article = document.createElement("article");
@@ -102,22 +122,22 @@
 
         const input1 = document.createElement("input");
         input1.setAttribute("type","button");
-        input1.setAttribute("id","btn"+number);
+        input1.setAttribute("id","btn"+id);
         input1.setAttribute("class","question-action-open");
 
         const input2 = document.createElement("input");
         input2.setAttribute("type","submit");
-        input2.setAttribute("id","sub"+number);
+        input2.setAttribute("id","sub"+id);
         input2.setAttribute("value","決定");
 
         const label = document.createElement("label");
-        label.setAttribute("for","btn"+number);
+        label.setAttribute("for","btn"+id);
 
         const div1 = document.createElement("div");
         div1.setAttribute("class","question");
 
         const div2 = document.createElement("div");
-        div2.setAttribute("id","hid"+number);
+        div2.setAttribute("id","hid"+id);
         div2.setAttribute("class","off");
 
         //ノードの挿入
@@ -133,7 +153,7 @@
           const ary=  document.createTextNode(aryAnser[i].anser);
           const inp = document.createElement("input");
           inp.setAttribute("type","radio");
-          inp.setAttribute("name",number);
+          inp.setAttribute("name",id);
           inp.setAttribute("value",aryAnser[i].anser);
           //ノードの挿入
           div2.appendChild(lav);
@@ -143,18 +163,52 @@
         div2.appendChild(input2);
         return article;
       }
-      /** アクションを付加する **/
-      function resultQuestionAddActionHTML(number){
-        const btn = document.getElementById('btn' + number);
-        const hid = document.getElementById('hid'+ number);
-        const sub = document.getElementById('sub'+ number);
+      /**
+       * 作成された質問表示用HTMLノードにクリック時の開閉動作と
+       * 回答の動作を追加する
+       * @method resultQuestionAddActionHTML
+       * @param  {[String]}                    id [description]
+       * @return {[undefind]}                    [description]
+       */
+      function resultQuestionAddActionHTML(id){
+        const btn = document.getElementById('btn' + id);
+        const hid = document.getElementById('hid'+ id);
+        const sub = document.getElementById('sub'+ id);
 
         btn.onclick = function(){resultQuestionAddHidActionHTML(hid)}
-        sub.onclick = function(){voteAddActionHTML(number,hid,sub)}
+        sub.onclick = function(){voteAddActionHTML(id,hid,sub)}
       }
-      /** 決定ボタンを押した後、表示内容を変更する **/
-      function voteAddActionHTML(num,hid,sub){
-        const btns = document.getElementsByName(num);
+      /**
+       * クリック時の開閉動作を追加する
+       * @method resultQuestionAddHidActionHTML
+       * @param  {[Object]}                      hid [description]
+       * @return {[undefind]}                       [description]
+       */
+      function resultQuestionAddHidActionHTML(hid){
+        if(hid.className == "off"){//offなら表示する
+          hid.style.height = "auto";
+          hid.style.display = "block"
+          hid.className = "on";
+        }else if(hid.className == "on"){//onなら非表示にする
+          hid.style.height = "0";
+          hid.style.display = "none";
+          hid.className = "off";
+        }else{
+          console.log("resultQuestionAddHidActionHTMLで不正なものが入っている")
+        }
+      }
+      /**
+       * 投票時のアクションを追加する。
+       * 選択されていなければ送信ボタンに選択促す文字列を設定。
+       * 選択されていれば投票処理のあとに投票結果の表示を行う。
+       * @method voteAddActionHTML
+       * @param  {[type]}          id  [description]
+       * @param  {[type]}          hid [description]
+       * @param  {[type]}          sub [description]
+       * @return {[type]}          [description]
+       */
+      function voteAddActionHTML(id,hid,sub){
+        const btns = document.getElementsByName(id);
         let check = -1;
         //１つでもチェックがついているか判断
         for(let i = 0;i < btns.length;i++){
@@ -169,7 +223,7 @@
           hid.removeChild(hid.firstChild);
         }
         //データベースに反映
-        voteConnect(num,check,function(JSON){
+        voteConnect(id,check,function(JSON){
           //div要素を作成
           /*
           [{anser:"~~~~~",total:0},{anser:"~~~~~",total:0}{anser:"~~~~~",total:0}]
@@ -190,20 +244,6 @@
         })
         //閉じてしまったhidを表示
         resultQuestionAddHidActionHTML(hid);
-      }
-      //表示非表示を切り替える
-      function resultQuestionAddHidActionHTML(hid){
-        if(hid.className == "off"){//offなら表示する
-          hid.style.height = "auto";
-          hid.style.display = "block"
-          hid.className = "on";
-        }else if(hid.className == "on"){//onなら非表示にする
-          hid.style.height = "0";
-          hid.style.display = "none";
-          hid.className = "off";
-        }else{
-          console.log("resultQuestionAddHidActionHTMLで不正なものが入っている")
-        }
       }
     }
   </script>
